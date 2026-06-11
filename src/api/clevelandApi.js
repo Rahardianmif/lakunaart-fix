@@ -1,7 +1,6 @@
 import axiosClient from "./axiosClient";
 
-const CLEVELAND_BASE =
-  "https://openaccess-api.clevelandart.org/api";
+const CLEVELAND_BASE = "/api/cleveland";
 
 function cleanParams(params = {}) {
   return Object.fromEntries(
@@ -12,6 +11,30 @@ function cleanParams(params = {}) {
       value !== false
     )
   );
+}
+
+function normalizeArray(value) {
+  if (!value) return [];
+
+  if (Array.isArray(value)) {
+    return value.filter(Boolean);
+  }
+
+  return [value].filter(Boolean);
+}
+
+function buildSearchQuery(query = "", filters = {}) {
+  const cultures = normalizeArray(filters.culture);
+  const mediums = normalizeArray(filters.medium);
+
+  return [
+    query,
+    ...cultures,
+    mediums.length > 1 ? mediums.join(" ") : "",
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
 }
 
 export async function fetchArtworks(params = {}) {
@@ -44,20 +67,17 @@ export async function searchArtworks({
   limit = 24,
   skip = 0,
 } = {}) {
-  const qParts = [query, filters.culture]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
+  const mediums = normalizeArray(filters.medium);
 
   const params = {
-    q: qParts,
+    q: buildSearchQuery(query, filters),
     limit,
     skip,
     has_image: filters.hasImage === false ? undefined : 1,
     department: filters.department,
-    technique: filters.medium,
-    created_after: filters.dateFrom,
-    created_before: filters.dateTo,
+    technique: mediums.length === 1 ? mediums[0] : undefined,
+    created_after: filters.createdAfter,
+    created_before: filters.createdBefore,
   };
 
   return fetchArtworks(params);

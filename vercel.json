@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/api/cleveland/:path*",
+      "destination": "https://openaccess-api.clevelandart.org/api/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
