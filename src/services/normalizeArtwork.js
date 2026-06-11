@@ -3,7 +3,74 @@ function firstValue(value, fallback = "-") {
     return value.length > 0 ? value[0] : fallback;
   }
 
+  if (typeof value === "object" && value !== null) {
+    return fallback;
+  }
+
   return value || fallback;
+}
+
+function toDisplayText(value, fallback = "-") {
+  if (value === undefined || value === null || value === "") {
+    return fallback;
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    const text = value
+      .map((item) => toDisplayText(item, ""))
+      .filter(Boolean)
+      .join(", ");
+
+    return text || fallback;
+  }
+
+  if (typeof value === "object") {
+    if (value.description) return value.description;
+    if (value.name) return value.name;
+    if (value.title) return value.title;
+    if (value.value) return value.value;
+    if (value.text) return value.text;
+
+    const text = Object.entries(value)
+      .map(([key, itemValue]) => {
+        const formattedValue = toDisplayText(itemValue, "");
+
+        if (!formattedValue) return "";
+
+        const label = key
+          .replace(/_/g, " ")
+          .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+        return `${label}: ${formattedValue}`;
+      })
+      .filter(Boolean)
+      .join(" | ");
+
+    return text || fallback;
+  }
+
+  return fallback;
+}
+
+function normalizeDimensions(artwork = {}) {
+  const measurementDescription =
+    artwork.measurements?.[0]?.description ||
+    artwork.measurements?.[0]?.formatted ||
+    artwork.measurements?.[0]?.value;
+
+  if (measurementDescription) {
+    return toDisplayText(measurementDescription);
+  }
+
+  if (artwork.dimensions) {
+    return toDisplayText(artwork.dimensions);
+  }
+
+  return "-";
 }
 
 function normalizeCreator(creator) {
@@ -13,31 +80,40 @@ function normalizeCreator(creator) {
       name: "Unknown Artist",
       description: "Unknown Artist",
       biography: "Biography is not available for this artist.",
+      birthYear: null,
+      deathYear: null,
+      nationality: "-",
     };
   }
 
   return {
     id: creator.id || null,
+
     name:
       creator.name ||
       creator.description ||
       "Unknown Artist",
+
     description:
       creator.description ||
       creator.name ||
       "Unknown Artist",
+
     biography:
       creator.biography ||
       creator.description ||
       "Biography is not available for this artist.",
+
     birthYear:
       creator.birth_year ||
       creator.birth_date ||
       null,
+
     deathYear:
       creator.death_year ||
       creator.death_date ||
       null,
+
     nationality:
       creator.nationality ||
       "-",
@@ -51,17 +127,34 @@ export function normalizeArtwork(artwork = {}) {
     id: artwork.id,
 
     title:
-      artwork.title ||
-      "Untitled",
+      toDisplayText(artwork.title, "Untitled"),
 
-    artist: creator.description,
-    artistName: creator.name,
-    artistId: creator.id,
-    artistBiography: creator.biography,
-    artistBirthYear: creator.birthYear,
-    artistDeathYear: creator.deathYear,
-    artistNationality: creator.nationality,
-    creators: (artwork.creators || []).map(normalizeCreator),
+    artist:
+      toDisplayText(creator.description, "Unknown Artist"),
+
+    artistName:
+      toDisplayText(creator.name, "Unknown Artist"),
+
+    artistId:
+      creator.id,
+
+    artistBiography:
+      toDisplayText(
+        creator.biography,
+        "Biography is not available for this artist."
+      ),
+
+    artistBirthYear:
+      creator.birthYear,
+
+    artistDeathYear:
+      creator.deathYear,
+
+    artistNationality:
+      toDisplayText(creator.nationality),
+
+    creators:
+      (artwork.creators || []).map(normalizeCreator),
 
     image:
       artwork.images?.web?.url ||
@@ -69,12 +162,10 @@ export function normalizeArtwork(artwork = {}) {
       "",
 
     imageAlt:
-      artwork.title ||
-      "Artwork image",
+      toDisplayText(artwork.title, "Artwork image"),
 
     year:
-      artwork.creation_date ||
-      "-",
+      toDisplayText(artwork.creation_date),
 
     creationDateEarliest:
       artwork.creation_date_earliest ||
@@ -94,56 +185,55 @@ export function normalizeArtwork(artwork = {}) {
       firstValue(artwork.culture),
 
     cultures:
-      artwork.culture || [],
+      Array.isArray(artwork.culture)
+        ? artwork.culture
+        : [],
 
     medium:
-      artwork.technique ||
-      artwork.medium ||
-      "-",
+      toDisplayText(
+        artwork.technique ||
+        artwork.medium
+      ),
 
     type:
-      artwork.type ||
-      "-",
+      toDisplayText(artwork.type),
 
     department:
-      artwork.department ||
-      "-",
+      toDisplayText(artwork.department),
 
     collection:
-      artwork.collection ||
-      artwork.department ||
-      "-",
+      toDisplayText(
+        artwork.collection ||
+        artwork.department
+      ),
 
     period:
-      artwork.period ||
-      "-",
+      toDisplayText(artwork.period),
 
     description:
-      artwork.wall_description ||
-      artwork.description ||
-      "No description available.",
+      toDisplayText(
+        artwork.wall_description ||
+        artwork.description,
+        "No description available."
+      ),
 
     creditLine:
-      artwork.creditline ||
-      "-",
+      toDisplayText(artwork.creditline),
 
     dimensions:
-      artwork.measurements?.[0]?.description ||
-      artwork.dimensions ||
-      "-",
+      normalizeDimensions(artwork),
 
     url:
       artwork.url ||
       "",
 
     accessionNumber:
-      artwork.accession_number ||
-      "-",
+      toDisplayText(artwork.accession_number),
 
     shareLicenseStatus:
-      artwork.share_license_status ||
-      "-",
+      toDisplayText(artwork.share_license_status),
 
-    raw: artwork,
+    raw:
+      artwork,
   };
 }
